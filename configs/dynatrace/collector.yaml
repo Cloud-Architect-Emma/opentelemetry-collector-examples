@@ -1,0 +1,49 @@
+# Dynatrace Collector Config
+# Replace <YOUR_ENV> and <YOUR_TOKEN> with your values
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+  resourcedetection:
+    detectors: [env, system]
+
+exporters:
+  otlphttp:
+    endpoint: "https://<YOUR_ENV>.live.dynatrace.com/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token <YOUR_TOKEN>"
+
+service:
+  telemetry:
+    metrics:
+      level: detailed
+      readers:
+        - periodic:
+            interval: 60s
+            exporter:
+              otlp:
+                protocol: http/protobuf
+                endpoint: "https://<YOUR_ENV>.live.dynatrace.com/api/v2/otlp/v1/metrics"
+                headers:
+                  - name: Authorization
+                    value: "Api-Token <YOUR_TOKEN>"
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch, resourcedetection]
+      exporters: [otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: [batch, resourcedetection]
+      exporters: [otlphttp]
+    logs:
+      receivers: [otlp]
+      processors: [batch, resourcedetection]
+      exporters: [otlphttp]
