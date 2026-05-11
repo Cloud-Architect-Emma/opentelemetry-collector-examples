@@ -1,0 +1,68 @@
+# OpenTelemetry eBPF (OBI) Config
+# Zero-code application monitoring using eBPF — no code changes needed.
+# Captures HTTP, gRPC, TCP metrics and traces automatically from running processes.
+#
+# Requires: Linux kernel 4.14+ and the otel-ebpf-profiler or OBI agent
+# Deploy with: kubectl apply -f ebpf-collector.yaml
+
+apiVersion: opentelemetry.io/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-ebpf-collector
+spec:
+  mode: daemonset
+  hostNetwork: true
+  securityContext:
+    privileged: true  # required for eBPF
+  volumes:
+    - name: host-proc
+      hostPath:
+        path: /proc
+    - name: host-sys
+      hostPath:
+        path: /sys
+  volumeMounts:
+    - name: host-proc
+      mountPath: /host/proc
+      readOnly: true
+    - name: host-sys
+      mountPath: /host/sys
+      readOnly: true
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      batch:
+      resourcedetection:
+        detectors: [env, system, k8snode]
+        k8snode:
+          auth_type: serviceAccount
+    exporters:
+      debug:
+        verbosity: detailed
+      # Uncomment to send to your backend:
+      # otlphttp:
+      #   endpoint: https://your-backend/otlp
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch, resourcedetection]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          processors: [batch, resourcedetection]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          processors: [batch, resourcedetection]
+          exporters: [debug]
+
+# Note: The eBPF agent (OBI) runs as a separate DaemonSet and sends
+# telemetry to this collector via OTLP. Deploy OBI first:
+# https://github.com/open-telemetry/opentelemetry-network
