@@ -1,0 +1,65 @@
+# Kubernetes Pod Annotation Scraping Config
+# Scrapes metrics from pods with prometheus.io/scrape: 'true' annotation
+# Deploy with: kubectl apply -f pod-annotation-scraping.yaml
+
+apiVersion: opentelemetry.io/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-collector-annotation-scraper
+spec:
+  mode: daemonset
+  config:
+    receivers:
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: 'kubernetes-pods'
+              scrape_interval: 30s
+              kubernetes_sd_configs:
+                - role: pod
+              relabel_configs:
+                # Only scrape pods with annotation prometheus.io/scrape: 'true'
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                  action: keep
+                  regex: true
+                # Use custom port from prometheus.io/port annotation
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+                  action: replace
+                  target_label: __address__
+                  regex: (\d+)
+                  replacement: '${__address__}:'
+                # Use custom path from prometheus.io/path annotation
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+                  action: replace
+                  target_label: __metrics_path__
+                  regex: (.+)
+                # Add pod name as label
+                - source_labels: [__meta_kubernetes_pod_name]
+                  action: replace
+                  target_label: pod
+                # Add namespace as label
+                - source_labels: [__meta_kubernetes_namespace]
+                  action: replace
+                  target_label: namespace
+                # Add node name as label
+                - source_labels: [__meta_kubernetes_pod_node_name]
+                  action: replace
+                  target_label: node
+    processors:
+      batch:
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 75
+        spike_limit_percentage: 15
+    exporters:
+      debug:
+        verbosity: detailed
+      # Uncomment to export to Prometheus:
+      # prometheusremotewrite:
+      #   endpoint: http://prometheus:9090/api/v1/write
+    service:
+      pipelines:
+        metrics:
+          receivers: [prometheus]
+          processors: [memory_limiter, batch]
+          exporters: [debug]
