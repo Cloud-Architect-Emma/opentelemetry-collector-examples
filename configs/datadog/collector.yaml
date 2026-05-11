@@ -1,5 +1,9 @@
 # Datadog Collector Config
 # Replace <YOUR_DD_API_KEY> with your Datadog API key
+#
+# NOTE: Depending on your collector-contrib version, you may also need
+# to configure the datadog connector. See:
+# https://docs.datadoghq.com/opentelemetry/collector_exporter/
 
 receivers:
   otlp:
