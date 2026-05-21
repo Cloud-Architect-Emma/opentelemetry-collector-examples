@@ -1,3 +1,6 @@
+⭐ If this saves you time, please star the repo, it helps others find it!
+![GitHub stars](https://img.shields.io/github/stars/Cloud-Architect-Emma/terraform-module-registry?style=social)
+
 # OpenTelemetry Collector Examples
 
 Ready-to-run OpenTelemetry Collector configurations for the most common observability backends. Copy, paste, and go.
